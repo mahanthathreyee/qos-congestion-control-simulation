@@ -19,5 +19,5 @@ uint32_t maxBytes = 0;
 uint16_t sinkPort = 8080;
 uint32_t segmentSize = 524;
 Time simulationEndTime = Seconds(120);
-std::string transportProtocol = "ns3::TcpLedbat";
+std::string transportProtocol = "ns3::TcpNewReno";
 std::string queue_stat_file = "results/flow_stats.csv";
