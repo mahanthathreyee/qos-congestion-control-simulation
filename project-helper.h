@@ -6,8 +6,8 @@ Ptr<FlowMonitor> monitor;
 Ptr<Ipv4FlowClassifier> classifier;
 
 struct NodeMetrics {
-    double throughput;
-    size_t packetsDropped;
+    std::vector<double> throughput;
+    std::vector<size_t> packetsDropped;
 };
 
 NodeMetrics calculateMetrics(uint32_t nodeId) {
@@ -17,23 +17,39 @@ NodeMetrics calculateMetrics(uint32_t nodeId) {
     std::map<FlowId, FlowMonitor::FlowStats>::const_iterator iter;
     
     for (iter = stats.begin(); iter != stats.end(); iter++) {
-        if (iter->first == nodeId + 1) {
-            uint32_t pktDropSum = 0;
-            std::vector<uint32_t> pktDropVector = iter->second.packetsDropped;
-            for (auto tIter = pktDropVector.begin(); tIter != pktDropVector.end(); tIter++) {
-                pktDropSum += *tIter;
-            }
-
-            double transferredBytes = (iter->second.rxBytes * 8.0);
-            double current_time = Simulator::Now().GetSeconds();
-            nodeMetrics.throughput = transferredBytes / current_time / 1000 / 1000;
-            nodeMetrics.packetsDropped = pktDropSum;
-            break;
+        uint32_t pktDropSum = 0;
+        std::vector<uint32_t> pktDropVector = iter->second.packetsDropped;
+        for (auto tIter = pktDropVector.begin(); tIter != pktDropVector.end(); tIter++) {
+            pktDropSum += *tIter;
         }
+
+        double current_time = Simulator::Now().GetSeconds();
+        double transferredBytes = (iter->second.rxBytes * 8.0);
+        double throughput = transferredBytes / current_time / 1000 / 1000;
         
+        nodeMetrics.packetsDropped.push_back(pktDropSum);
+        nodeMetrics.throughput.push_back(throughput);
     }
 
     return nodeMetrics;
+}
+
+double calculateJainFairness(const std::vector<double>& throughputs) {
+    double sum = 0.0;
+    double sumSquared = 0.0;
+    double fairnessIndex = 0.0;
+    int numFlows = throughputs.size();
+
+    for (int i = 0; i < numFlows; ++i) {
+        sum += throughputs[i];
+        sumSquared += throughputs[i] * throughputs[i];
+    }
+
+    if (sum != 0.0) {
+        fairnessIndex = ((sum * sum) / (numFlows * sumSquared));
+    }
+
+    return fairnessIndex;
 }
 
 void windowSizeChangeCallback(uint32_t nodeId, uint32_t oldCwnd, uint32_t newCwnd) {
@@ -45,9 +61,10 @@ void windowSizeChangeCallback(uint32_t nodeId, uint32_t oldCwnd, uint32_t newCwn
                 << " (" << packet.sourceAddress << " -> " << packet.destinationAddress << ")" 
                 << ","
                 << Simulator::Now().GetSeconds() << "," 
-                << nodeMetrics.throughput << ","
+                << nodeMetrics.throughput[nodeId] << ","
                 << newCwnd / segmentSize << ","
-                << nodeMetrics.packetsDropped << std::endl;
+                << nodeMetrics.packetsDropped[nodeId] << ","
+                << calculateJainFairness(nodeMetrics.throughput) << std::endl;
     fPlotQueue.close();
 }
 
@@ -80,6 +97,6 @@ void applicationInstaller(Ptr<Node> node, Address sinkAddress) {
 void truncateFile() {
     std::ofstream fPlotQueue(std::stringstream(queue_stat_file).str(),
                             std::ios::out | std::ios::trunc);
-    fPlotQueue  << "Flow ID,Time,Throughput,Window Size,Packets Dropped\n";
+    fPlotQueue  << "Flow ID,Time,Throughput,Window Size,Packets Dropped,Fairness\n";
     fPlotQueue.close();
 }
