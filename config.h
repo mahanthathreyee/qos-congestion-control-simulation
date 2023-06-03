@@ -20,4 +20,4 @@ uint16_t sinkPort = 8080;
 uint32_t segmentSize = 524;
 Time simulationEndTime = Seconds(240);
 std::string transportProtocol = "ns3::TcpCubic";
-std::string queue_stat_file = "results/flow_stats.csv";
+std::string queueStatFile = "results/flow_stats.csv";

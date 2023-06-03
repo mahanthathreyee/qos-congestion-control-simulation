@@ -54,7 +54,7 @@ double calculateJainFairness(const std::vector<double>& throughputs) {
 
 void windowSizeChangeCallback(uint32_t nodeId, uint32_t oldCwnd, uint32_t newCwnd) {
     NodeMetrics nodeMetrics = calculateMetrics(nodeId);
-    std::ofstream fPlotQueue(queue_stat_file, std::ios::out | std::ios::app);
+    std::ofstream fPlotQueue(queueStatFile, std::ios::out | std::ios::app);
     Ipv4FlowClassifier::FiveTuple packet = classifier->FindFlow(nodeId + 1);
 
     fPlotQueue  << nodeId 
@@ -95,7 +95,7 @@ void applicationInstaller(Ptr<Node> node, Address sinkAddress) {
 }
 
 void truncateFile() {
-    std::ofstream fPlotQueue(std::stringstream(queue_stat_file).str(),
+    std::ofstream fPlotQueue(std::stringstream(queueStatFile).str(),
                             std::ios::out | std::ios::trunc);
     fPlotQueue  << "Flow ID,Time,Throughput,Window Size,Packets Dropped,Fairness\n";
     fPlotQueue.close();

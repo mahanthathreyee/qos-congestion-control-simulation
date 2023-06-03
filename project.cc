@@ -13,6 +13,14 @@ void configureDefaults() {
 #pragma endregion
 
 int main(int argc, char* argv[]) {
+    #pragma region Command Line Arguments
+
+    CommandLine cmd(__FILE__);
+    cmd.AddValue("transportProtocol", "Transport protocol to be used", transportProtocol);
+    cmd.AddValue("`1", "File path to store queue stats", queueStatFile);
+    cmd.Parse(argc, argv);
+    #pragma endregion
+
     #pragma region Utility Helper 
     configureDefaults();
     
