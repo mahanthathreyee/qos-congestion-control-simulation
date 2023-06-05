@@ -4,7 +4,9 @@ using namespace ns3;
 
 Ptr<FlowMonitor> monitor;
 Ptr<Ipv4FlowClassifier> classifier;
+double currentCWSize = 1;
 
+#pragma region Calculate and Store Flow Metrics
 struct NodeMetrics {
     std::vector<double> throughput;
     std::vector<size_t> packetsDropped;
@@ -52,20 +54,25 @@ double calculateJainFairness(const std::vector<double>& throughputs) {
     return fairnessIndex;
 }
 
-void windowSizeChangeCallback(uint32_t nodeId, uint32_t oldCwnd, uint32_t newCwnd) {
+void storeMetrics(uint32_t nodeId) {
     NodeMetrics nodeMetrics = calculateMetrics(nodeId);
-    std::ofstream fPlotQueue(queueStatFile, std::ios::out | std::ios::app);
-    Ipv4FlowClassifier::FiveTuple packet = classifier->FindFlow(nodeId + 1);
+    std::ofstream fPlotFlow(flowStatFile, std::ios::out | std::ios::app);
 
-    fPlotQueue  << nodeId 
-                << " (" << packet.sourceAddress << " -> " << packet.destinationAddress << ")" 
-                << ","
+    Simulator::Schedule(Seconds(0.01), &storeMetrics, nodeId);
+
+    fPlotFlow   << nodeId << ","
                 << Simulator::Now().GetSeconds() << "," 
                 << nodeMetrics.throughput[nodeId] << ","
-                << newCwnd / segmentSize << ","
                 << nodeMetrics.packetsDropped[nodeId] << ","
-                << calculateJainFairness(nodeMetrics.throughput) << std::endl;
-    fPlotQueue.close();
+                << calculateJainFairness(nodeMetrics.throughput) << ","
+                << currentCWSize << std::endl;
+    fPlotFlow.close();
+}
+#pragma endregion 
+
+#pragma region Store Congestion Window Change
+void windowSizeChangeCallback(uint32_t nodeId, uint32_t oldCwnd, uint32_t newCwnd) {
+    currentCWSize = newCwnd / segmentSize;
 }
 
 void registerWindowSizeTracer(uint32_t nodeId) {
@@ -78,6 +85,7 @@ void registerWindowSizeTracer(uint32_t nodeId) {
     Config::ConnectWithoutContext(cwndTraceLoc, 
         MakeBoundCallback(&windowSizeChangeCallback, nodeId));
 }
+#pragma endregion
 
 void applicationInstaller(Ptr<Node> node, Address sinkAddress) {
     BulkSendHelper source("ns3::TcpSocketFactory", sinkAddress);
@@ -92,11 +100,13 @@ void applicationInstaller(Ptr<Node> node, Address sinkAddress) {
 
     Simulator::Schedule(Seconds(0.5) + Seconds(0.001), 
         &registerWindowSizeTracer, nodeId);
+    Simulator::Schedule(Seconds(0.5) + Seconds(0.001), 
+        &storeMetrics, nodeId);
 }
 
 void truncateFile() {
-    std::ofstream fPlotQueue(std::stringstream(queueStatFile).str(),
+    std::ofstream fPlotFlow(std::stringstream(flowStatFile).str(),
                             std::ios::out | std::ios::trunc);
-    fPlotQueue  << "Flow ID,Time,Throughput,Window Size,Packets Dropped,Fairness\n";
-    fPlotQueue.close();
+    fPlotFlow  << "Flow ID,Time,Throughput,Packets Dropped,Fairness,Window Size" << std::endl;
+    fPlotFlow.close();
 }
