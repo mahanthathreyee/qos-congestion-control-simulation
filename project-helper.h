@@ -58,7 +58,7 @@ void storeMetrics(uint32_t nodeId) {
     NodeMetrics nodeMetrics = calculateMetrics(nodeId);
     std::ofstream fPlotFlow(flowStatFile, std::ios::out | std::ios::app);
 
-    Simulator::Schedule(Seconds(0.01), &storeMetrics, nodeId);
+    Simulator::Schedule(Seconds(0.005), &storeMetrics, nodeId);
 
     fPlotFlow   << nodeId << ","
                 << Simulator::Now().GetSeconds() << "," 
@@ -87,14 +87,23 @@ void registerWindowSizeTracer(uint32_t nodeId) {
 }
 #pragma endregion
 
-void applicationInstaller(Ptr<Node> node, Address sinkAddress) {
-    BulkSendHelper source("ns3::TcpSocketFactory", sinkAddress);
-    source.SetAttribute("MaxBytes", UintegerValue(maxBytes));
-
-    ApplicationContainer sourceApps = source.Install(node);
+void applicationInstaller(Ptr<Node> node, Address sinkAddress, bool bulkApplication) {
+    ApplicationContainer sourceApps;
+    
+    if (bulkApplication) {
+        BulkSendHelper source("ns3::TcpSocketFactory", sinkAddress);
+        source.SetAttribute("MaxBytes", UintegerValue(maxBytes));
+        sourceApps = source.Install(node);
+    } else {
+        OnOffHelper source("ns3::TcpSocketFactory", sinkAddress);
+        source.SetConstantRate(DataRate("448kb/s"));
+        source.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        source.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
+        sourceApps = source.Install(node);
+    }
     sourceApps.Start(MicroSeconds(100));
     sourceApps.Stop(simulationEndTime);
-
+    
     Callback<void, uint32_t, uint32_t> callback;
     uint32_t nodeId = node->GetId();
 

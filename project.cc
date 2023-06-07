@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
     NodeContainer sourceNodes;
     NodeContainer routers;
     NodeContainer sinkNodes;
-    sourceNodes.Create(3);
+    sourceNodes.Create(4);
     routers.Create(2);
     sinkNodes.Create(2);
 
@@ -49,7 +49,8 @@ int main(int argc, char* argv[]) {
     // Left Nodes
     NodeContainer l0c0 = NodeContainer(sourceNodes.Get(0), routers.Get(0));
     NodeContainer l1c0 = NodeContainer(sourceNodes.Get(1), routers.Get(0));
-    NodeContainer l2c0 = NodeContainer(sourceNodes.Get(2), routers.Get(0));
+    NodeContainer l2c0 = NodeContainer(sourceNodes.Get(2), routers.Get(1));
+    NodeContainer l3c0 = NodeContainer(sourceNodes.Get(3), routers.Get(1));
     // Right Nodes
     NodeContainer r0c1 = NodeContainer(routers.Get(1), sinkNodes.Get(0));
     NodeContainer r1c1 = NodeContainer(routers.Get(1), sinkNodes.Get(1));
@@ -58,6 +59,7 @@ int main(int argc, char* argv[]) {
     NetDeviceContainer ld0cd0 = nodeRouterLink.Install(l0c0);
     NetDeviceContainer ld1cd0 = nodeRouterLink.Install(l1c0);
     NetDeviceContainer ld2cd0 = nodeRouterLink.Install(l2c0);
+    NetDeviceContainer ld3cd0 = nodeRouterLink.Install(l3c0);
     NetDeviceContainer rd0cd1 = nodeRouterLink.Install(r0c1);
     NetDeviceContainer rd1cd1 = nodeRouterLink.Install(r1c1);
 
@@ -69,6 +71,8 @@ int main(int argc, char* argv[]) {
     Ipv4InterfaceContainer regLinkInterface_ld1cd0 = ipv4.Assign(ld1cd0);
     ipv4.SetBase("10.1.3.0","255.255.255.0");
     Ipv4InterfaceContainer regLinkInterface_ld2cd0 = ipv4.Assign(ld2cd0);
+    ipv4.SetBase("10.1.4.0","255.255.255.0");
+    Ipv4InterfaceContainer regLinkInterface_ld3cd0 = ipv4.Assign(ld3cd0);
     // Right Side Nodes
     ipv4.SetBase("10.2.1.0","255.255.255.0");
     Ipv4InterfaceContainer regLinkInterface_rd0cd1 = ipv4.Assign(rd0cd1);
@@ -106,9 +110,10 @@ int main(int argc, char* argv[]) {
     sinkApps5.Stop(simulationEndTime);
 
     // Configure Application Source On Left Nodes
-    applicationInstaller(sourceNodes.Get(0), sinkAddress4);
-    applicationInstaller(sourceNodes.Get(1), sinkAddress5);
-    applicationInstaller(sourceNodes.Get(2), sinkAddress5);
+    applicationInstaller(sourceNodes.Get(0), sinkAddress4, true);
+    applicationInstaller(sourceNodes.Get(1), sinkAddress5, true);
+    applicationInstaller(sourceNodes.Get(2), sinkAddress5, true);
+    applicationInstaller(sourceNodes.Get(3), sinkAddress5, true);
     #pragma endregion
 
     #pragma region Flow Monitoring And Stats
