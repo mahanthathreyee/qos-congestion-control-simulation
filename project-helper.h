@@ -12,7 +12,7 @@ struct NodeMetrics {
     std::vector<size_t> packetsDropped;
 };
 
-NodeMetrics calculateMetrics(uint32_t nodeId) {
+NodeMetrics calculateMetrics() {
     NodeMetrics nodeMetrics;
     
     FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
@@ -55,7 +55,7 @@ double calculateJainFairness(const std::vector<double>& throughputs) {
 }
 
 void storeMetrics(uint32_t nodeId) {
-    NodeMetrics nodeMetrics = calculateMetrics(nodeId);
+    NodeMetrics nodeMetrics = calculateMetrics();
     std::ofstream fPlotFlow(flowStatFile, std::ios::out | std::ios::app);
 
     Simulator::Schedule(Seconds(0.005), &storeMetrics, nodeId);
