@@ -49,8 +49,8 @@ int main(int argc, char* argv[]) {
     // Left Nodes
     NodeContainer l0c0 = NodeContainer(sourceNodes.Get(0), routers.Get(0));
     NodeContainer l1c0 = NodeContainer(sourceNodes.Get(1), routers.Get(0));
-    NodeContainer l2c0 = NodeContainer(sourceNodes.Get(2), routers.Get(1));
-    NodeContainer l3c0 = NodeContainer(sourceNodes.Get(3), routers.Get(1));
+    NodeContainer l2c0 = NodeContainer(sourceNodes.Get(2), routers.Get(0));
+    NodeContainer l3c0 = NodeContainer(sourceNodes.Get(3), routers.Get(0));
     // Right Nodes
     NodeContainer r0c1 = NodeContainer(routers.Get(1), sinkNodes.Get(0));
     NodeContainer r1c1 = NodeContainer(routers.Get(1), sinkNodes.Get(1));
@@ -84,8 +84,10 @@ int main(int argc, char* argv[]) {
     NodeContainer n2n3 = NodeContainer(routers.Get(0), routers.Get(1));
     PointToPointHelper bottleNeckLinkA;
     
+    // bottleNeckLinkA.SetChannelAttribute ("Delay", StringValue ("1ms"));
+    // bottleNeckLinkA.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+    // bottleNeckLinkA.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("10000000000p"));
     NetDeviceContainer cd0cd1 = bottleNeckLinkA.Install(n2n3);
-    bottleNeckLinkA.SetDeviceAttribute ("DataRate", StringValue ("1Kbps"));
 
     // Configure IP Address
     ipv4.SetBase("10.3.1.0","255.255.255.0");
@@ -111,9 +113,9 @@ int main(int argc, char* argv[]) {
 
     // Configure Application Source On Left Nodes
     applicationInstaller(sourceNodes.Get(0), sinkAddress4, true);
-    applicationInstaller(sourceNodes.Get(1), sinkAddress5, true);
-    applicationInstaller(sourceNodes.Get(2), sinkAddress5, true);
-    applicationInstaller(sourceNodes.Get(3), sinkAddress5, true);
+    // applicationInstaller(sourceNodes.Get(1), sinkAddress5, true);
+    // applicationInstaller(sourceNodes.Get(2), sinkAddress5, true);
+    // applicationInstaller(sourceNodes.Get(3), sinkAddress5, true);
     #pragma endregion
 
     #pragma region Flow Monitoring And Stats

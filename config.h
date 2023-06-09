@@ -15,9 +15,9 @@
 
 using namespace ns3;
 
-uint32_t maxBytes = 0;
+uint128_t maxBytes = ((uint128_t) 5) * ((uint128_t) 1024) * ((uint128_t) 1024) * ((uint128_t) 1024);
 uint16_t sinkPort = 8080;
 uint32_t segmentSize = 536;
-Time simulationEndTime = Seconds(600);
+Time simulationEndTime = Seconds(3600);
 std::string transportProtocol = "ns3::TcpCubic";
 std::string flowStatFile = "results/flow_stats.csv";

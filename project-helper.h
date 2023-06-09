@@ -25,9 +25,9 @@ NodeMetrics calculateMetrics() {
             pktDropSum += *tIter;
         }
 
-        double current_time = Simulator::Now().GetSeconds();
-        double transferredBytes = (iter->second.rxBytes * 8.0);
-        double throughput = transferredBytes / current_time / 1000 / 1000;
+        double current_time = iter->second.timeLastTxPacket.GetSeconds() - iter->second.timeFirstTxPacket.GetSeconds();
+        double transferredBytes = (iter->second.txBytes);
+        double throughput = transferredBytes; // (current_time * 1024 * 1024);
         
         nodeMetrics.packetsDropped.push_back(pktDropSum);
         nodeMetrics.throughput.push_back(throughput);
@@ -58,7 +58,7 @@ void storeMetrics(uint32_t nodeId) {
     NodeMetrics nodeMetrics = calculateMetrics();
     std::ofstream fPlotFlow(flowStatFile, std::ios::out | std::ios::app);
 
-    Simulator::Schedule(Seconds(0.005), &storeMetrics, nodeId);
+    Simulator::Schedule(Seconds(0.5), &storeMetrics, nodeId);
 
     fPlotFlow   << nodeId << ","
                 << Simulator::Now().GetSeconds() << "," 
@@ -94,13 +94,8 @@ void applicationInstaller(Ptr<Node> node, Address sinkAddress, bool bulkApplicat
         BulkSendHelper source("ns3::TcpSocketFactory", sinkAddress);
         source.SetAttribute("MaxBytes", UintegerValue(maxBytes));
         sourceApps = source.Install(node);
-    } else {
-        OnOffHelper source("ns3::TcpSocketFactory", sinkAddress);
-        source.SetConstantRate(DataRate("448kb/s"));
-        source.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
-        source.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-        sourceApps = source.Install(node);
     }
+    
     sourceApps.Start(MicroSeconds(100));
     sourceApps.Stop(simulationEndTime);
     
