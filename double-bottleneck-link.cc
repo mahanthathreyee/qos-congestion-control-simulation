@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     NodeContainer routers;
     NodeContainer sinkNodes;
     sourceNodes.Create(4);
-    routers.Create(2);
+    routers.Create(4);
     sinkNodes.Create(2);
 
     // Install Internet Stack for IP Address allocation
@@ -41,8 +41,6 @@ int main(int argc, char* argv[]) {
     truncateFile();
 
     Ipv4AddressHelper ipv4;
-    PacketSinkHelper packetSinkHelper("ns3::TcpSocketFactory",
-        InetSocketAddress(Ipv4Address::GetAny(), sinkPort));
     #pragma endregion
 
     #pragma region Configure nodes
@@ -52,16 +50,17 @@ int main(int argc, char* argv[]) {
     NodeContainer l2c0 = NodeContainer(sourceNodes.Get(2), routers.Get(0));
     NodeContainer l3c0 = NodeContainer(sourceNodes.Get(3), routers.Get(0));
     // Right Nodes
-    NodeContainer r0c1 = NodeContainer(routers.Get(1), sinkNodes.Get(0));
-    NodeContainer r1c1 = NodeContainer(routers.Get(1), sinkNodes.Get(1));
+    NodeContainer r3c0 = NodeContainer(routers.Get(3), sinkNodes.Get(0));
+    NodeContainer r3c1 = NodeContainer(routers.Get(3), sinkNodes.Get(1));
 
     PointToPointHelper nodeRouterLink;
+    nodeRouterLink.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
     NetDeviceContainer ld0cd0 = nodeRouterLink.Install(l0c0);
     NetDeviceContainer ld1cd0 = nodeRouterLink.Install(l1c0);
     NetDeviceContainer ld2cd0 = nodeRouterLink.Install(l2c0);
     NetDeviceContainer ld3cd0 = nodeRouterLink.Install(l3c0);
-    NetDeviceContainer rd0cd1 = nodeRouterLink.Install(r0c1);
-    NetDeviceContainer rd1cd1 = nodeRouterLink.Install(r1c1);
+    NetDeviceContainer rd3cd0 = nodeRouterLink.Install(r3c0);
+    NetDeviceContainer rd3cd1 = nodeRouterLink.Install(r3c1);
 
     // Configure IP Address
     // Left Side Nodes
@@ -75,23 +74,39 @@ int main(int argc, char* argv[]) {
     Ipv4InterfaceContainer regLinkInterface_ld3cd0 = ipv4.Assign(ld3cd0);
     // Right Side Nodes
     ipv4.SetBase("10.2.1.0","255.255.255.0");
-    Ipv4InterfaceContainer regLinkInterface_rd0cd1 = ipv4.Assign(rd0cd1);
+    Ipv4InterfaceContainer regLinkInterface_rd3cd0 = ipv4.Assign(rd3cd0);
     ipv4.SetBase("10.2.2.0","255.255.255.0");
-    Ipv4InterfaceContainer regLinkInterface_rd1cd1 = ipv4.Assign(rd1cd1);
+    Ipv4InterfaceContainer regLinkInterface_rd3cd1 = ipv4.Assign(rd3cd1);
     #pragma endregion
 
     #pragma region Configure routers
-    NodeContainer n2n3 = NodeContainer(routers.Get(0), routers.Get(1));
     PointToPointHelper bottleNeckLinkA;
-    
-    // bottleNeckLinkA.SetChannelAttribute ("Delay", StringValue ("1ms"));
-    // bottleNeckLinkA.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
-    // bottleNeckLinkA.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("10000000000p"));
-    NetDeviceContainer cd0cd1 = bottleNeckLinkA.Install(n2n3);
-
-    // Configure IP Address
+    bottleNeckLinkA.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+    NodeContainer n0n1 = NodeContainer(routers.Get(0), routers.Get(1));
+    NetDeviceContainer cd0cd1 = bottleNeckLinkA.Install(n0n1);
     ipv4.SetBase("10.3.1.0","255.255.255.0");
-    Ipv4InterfaceContainer bottleneckInterface = ipv4.Assign(cd0cd1);
+    Ipv4InterfaceContainer bottleneckInterfaceA = ipv4.Assign(cd0cd1);
+
+    PointToPointHelper bottleNeckLinkB;
+    bottleNeckLinkB.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+    NodeContainer n1n3 = NodeContainer(routers.Get(1), routers.Get(3));
+    NetDeviceContainer cd1cd3 = bottleNeckLinkB.Install(n1n3);
+    ipv4.SetBase("10.3.2.0","255.255.255.0");
+    Ipv4InterfaceContainer bottleneckInterfaceB = ipv4.Assign(cd1cd3);
+
+    PointToPointHelper bottleNeckLinkC;
+    bottleNeckLinkC.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+    NodeContainer n0n2 = NodeContainer(routers.Get(0), routers.Get(2));
+    NetDeviceContainer cd0cd2 = bottleNeckLinkC.Install(n0n2);
+    ipv4.SetBase("10.3.3.0","255.255.255.0");
+    Ipv4InterfaceContainer bottleneckInterfaceC = ipv4.Assign(cd0cd1);
+
+    PointToPointHelper bottleNeckLinkD;
+    bottleNeckLinkD.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+    NodeContainer n2n3 = NodeContainer(routers.Get(2), routers.Get(3));
+    NetDeviceContainer cd2cd3 = bottleNeckLinkD.Install(n2n3);
+    ipv4.SetBase("10.3.4.0","255.255.255.0");
+    Ipv4InterfaceContainer bottleneckInterfaceD = ipv4.Assign(cd2cd3);
     #pragma endregion Configure routers
 
     #pragma region Utility Helper 
@@ -100,36 +115,40 @@ int main(int argc, char* argv[]) {
 
     #pragma region Configure Application 
     // Configure Application Sink On Right Nodes
+    PacketSinkHelper packetSinkHelper("ns3::TcpSocketFactory",
+        InetSocketAddress(Ipv4Address::GetAny(), sinkPort));
     Address sinkAddress4(
-        InetSocketAddress(regLinkInterface_rd0cd1.GetAddress(1), sinkPort));
+        InetSocketAddress(regLinkInterface_rd3cd0.GetAddress(1), sinkPort));
     Address sinkAddress5(
-        InetSocketAddress(regLinkInterface_rd1cd1.GetAddress(1), sinkPort));
-    ApplicationContainer sinkApps4 = packetSinkHelper.Install(sinkNodes.Get(0));
-    ApplicationContainer sinkApps5 = packetSinkHelper.Install(sinkNodes.Get(1));
-    sinkApps4.Start(Seconds(0));
-    sinkApps4.Stop(simulationEndTime);
-    sinkApps5.Start(Seconds(0));
-    sinkApps5.Stop(simulationEndTime);
+        InetSocketAddress(regLinkInterface_rd3cd1.GetAddress(1), sinkPort));
+    applicationSinkInstaller(sinkNodes.Get(0));
+    applicationSinkInstaller(sinkNodes.Get(1));
 
     // Configure Application Source On Left Nodes
-    applicationInstaller(sourceNodes.Get(0), sinkAddress4, true);
-    // applicationInstaller(sourceNodes.Get(1), sinkAddress5, true);
-    // applicationInstaller(sourceNodes.Get(2), sinkAddress5, true);
-    // applicationInstaller(sourceNodes.Get(3), sinkAddress5, true);
+    applicationSourceInstaller(sourceNodes.Get(0), sinkAddress4, true);
+    applicationSourceInstaller(sourceNodes.Get(1), sinkAddress4, true);
+    applicationSourceInstaller(sourceNodes.Get(2), sinkAddress5, true);
+    applicationSourceInstaller(sourceNodes.Get(3), sinkAddress5, true);
+    
+    Simulator::Schedule (Seconds(10), &Ipv4::SetDown, bottleneckInterfaceB.Get(0).first, 2);
+    Simulator::Schedule (Seconds(10), &Ipv4::SetDown, bottleneckInterfaceB.Get(0).first, 1);
+
+    Simulator::Schedule (Seconds(10), &Ipv4::SetDown, bottleneckInterfaceC.Get(1).first, 2);
+    Simulator::Schedule (Seconds(10), &Ipv4::SetDown, bottleneckInterfaceC.Get(1).first, 1);
+    
+    Simulator::Schedule (Seconds(40), &Ipv4::SetUp, bottleneckInterfaceB.Get(0).first, 2);
+    Simulator::Schedule (Seconds(40), &Ipv4::SetUp, bottleneckInterfaceB.Get(0).first, 1);
     #pragma endregion
 
     #pragma region Flow Monitoring And Stats
     FlowMonitorHelper flowmon;
     monitor = flowmon.InstallAll();
     classifier = DynamicCast<Ipv4FlowClassifier>(flowmon.GetClassifier());
-    // Simulator::ScheduleNow(&calculateStats, monitor, classifier);
     #pragma endregion
 
     #pragma region Simulate Network
     Simulator::Stop(simulationEndTime);
     Simulator::Run();
-
-    monitor->CheckForLostPackets();
 
     Simulator::Destroy();
     #pragma endregion

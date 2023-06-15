@@ -15,6 +15,7 @@ struct NodeMetrics {
 NodeMetrics calculateMetrics() {
     NodeMetrics nodeMetrics;
     
+    monitor->CheckForLostPackets();
     FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
     std::map<FlowId, FlowMonitor::FlowStats>::const_iterator iter;
     
@@ -26,8 +27,8 @@ NodeMetrics calculateMetrics() {
         }
 
         double current_time = iter->second.timeLastTxPacket.GetSeconds() - iter->second.timeFirstTxPacket.GetSeconds();
-        double transferredBytes = (iter->second.txBytes);
-        double throughput = transferredBytes; // (current_time * 1024 * 1024);
+        double transferredBytes = (iter->second.txBytes * 8.0);
+        double throughput = transferredBytes / (current_time * 1024 * 1024);
         
         nodeMetrics.packetsDropped.push_back(pktDropSum);
         nodeMetrics.throughput.push_back(throughput);
@@ -58,7 +59,7 @@ void storeMetrics(uint32_t nodeId) {
     NodeMetrics nodeMetrics = calculateMetrics();
     std::ofstream fPlotFlow(flowStatFile, std::ios::out | std::ios::app);
 
-    Simulator::Schedule(Seconds(0.5), &storeMetrics, nodeId);
+    Simulator::Schedule(simulationMetricInterval, &storeMetrics, nodeId);
 
     fPlotFlow   << nodeId << ","
                 << Simulator::Now().GetSeconds() << "," 
@@ -87,7 +88,8 @@ void registerWindowSizeTracer(uint32_t nodeId) {
 }
 #pragma endregion
 
-void applicationInstaller(Ptr<Node> node, Address sinkAddress, bool bulkApplication) {
+#pragma region Node Application Installer
+void applicationSourceInstaller(Ptr<Node> node, Address sinkAddress, bool bulkApplication) {
     ApplicationContainer sourceApps;
     
     if (bulkApplication) {
@@ -96,17 +98,25 @@ void applicationInstaller(Ptr<Node> node, Address sinkAddress, bool bulkApplicat
         sourceApps = source.Install(node);
     }
     
-    sourceApps.Start(MicroSeconds(100));
+    sourceApps.Start(Seconds(0.1));
     sourceApps.Stop(simulationEndTime);
     
     Callback<void, uint32_t, uint32_t> callback;
     uint32_t nodeId = node->GetId();
 
-    Simulator::Schedule(Seconds(0.5) + Seconds(0.001), 
+    Simulator::Schedule(Seconds(0.1) + Seconds(0.001), 
         &registerWindowSizeTracer, nodeId);
-    Simulator::Schedule(Seconds(0.5) + Seconds(0.001), 
+    Simulator::Schedule(Seconds(0.1) + Seconds(0.001), 
         &storeMetrics, nodeId);
 }
+
+void applicationSinkInstaller(Ptr<Node> sinkNodes) {
+    PacketSinkHelper packetSinkHelper("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), sinkPort));
+    ApplicationContainer sinkApps = packetSinkHelper.Install(sinkNodes);
+    sinkApps.Start(Seconds(0));
+    sinkApps.Stop(simulationEndTime);
+}
+#pragma endregion
 
 void truncateFile() {
     std::ofstream fPlotFlow(std::stringstream(flowStatFile).str(),
